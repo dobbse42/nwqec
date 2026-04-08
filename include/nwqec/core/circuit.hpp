@@ -234,6 +234,8 @@ namespace NWQEC
             case Operation::Type::X:
             case Operation::Type::Y:
             case Operation::Type::Z:
+            case Operation::Type::SX:
+            case Operation::Type::SXDG:
             case Operation::Type::CX:
             // T gates
             case Operation::Type::T:

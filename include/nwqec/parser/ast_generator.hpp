@@ -93,16 +93,7 @@ namespace NWQEC
 
             while (!is_at_end())
             {
-                try
-                {
-                    program.add_statement(declaration());
-                }
-                catch (const ParseError &e)
-                {
-                    // Report error and synchronize
-                    std::cerr << e.what() << std::endl;
-                    synchronize();
-                }
+                program.add_statement(declaration());
             }
 
             return program;

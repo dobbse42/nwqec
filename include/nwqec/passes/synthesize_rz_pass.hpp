@@ -209,10 +209,7 @@ namespace NWQEC
             }
             catch (const std::exception &e)
             {
-                std::cerr << "Warning: Failed to synthesize RZ angle " << angle
-                          << ": " << e.what() << std::endl;
-                std::cerr << "Falling back to identity (no gates)" << std::endl;
-                return ""; // Return empty string as fallback
+                throw std::runtime_error("Failed to synthesize RZ angle " + std::to_string(angle) + ": " + e.what());
             }
         }
 
@@ -244,7 +241,7 @@ namespace NWQEC
                     // Skip global phase
                     break;
                 default:
-                    std::cerr << "Unknown gate type: " << gate << std::endl;
+                    throw std::runtime_error("Unknown gate type in synthesis sequence: " + std::string(1, gate));
                 }
             }
         }

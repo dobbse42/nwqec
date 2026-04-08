@@ -247,7 +247,7 @@ namespace NWQEC
                 apply_pauli(gate, a);
                 break;
             default:
-                std::cout << "Non-Clifford Gate!" << std::endl;
+                throw std::runtime_error("Non-Clifford Gate encountered: " + Operation::get_type_name(gate));
             }
         }
 
