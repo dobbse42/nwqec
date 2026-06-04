@@ -11,11 +11,6 @@
 #include <set>
 #include <string>
 #include <algorithm>
-#include <chrono>
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <cstdlib>
 
 namespace NWQEC
 {
@@ -34,9 +29,6 @@ namespace NWQEC
 
             const auto &operations = circuit.get_operations();
 
-            // Write original circuit before optimization
-            // write_operations_to_file(operations, num_qubits_, "original_circuit.qasm");
-
             if (!verify_pure_t_pauli_circuit(operations))
                 return false;
 
@@ -44,32 +36,6 @@ namespace NWQEC
 
             std::vector<PauliOp> t_pauli_rows = std::move(pauli_rows.first);
             std::vector<PauliOp> m_pauli_rows = std::move(pauli_rows.second);
-
-            // // Quick check for layering benefit
-            // auto greedy_layers = create_layers_greedy(t_pauli_rows);
-            // auto earilest_fit_layers = create_layers(t_pauli_rows);
-
-            // size_t average_greedy_layer_size = 0;
-            // for (const auto &layer : greedy_layers)
-            // {
-            //     average_greedy_layer_size += layer.num_rows();
-            // }
-            // average_greedy_layer_size /= greedy_layers.size();
-
-            // size_t average_earliest_fit_layer_size = 0;
-            // for (const auto &layer : earilest_fit_layers)
-            // {
-            //     average_earliest_fit_layer_size += layer.num_rows();
-            // }
-            // average_earliest_fit_layer_size /= earilest_fit_layers.size();
-
-            // std::cout << "Average greedy layer size: " << average_greedy_layer_size << ", Average earliest fit layer size: " << average_earliest_fit_layer_size << std::endl;
-
-            // std::cout << "Greedy layers: " << greedy_layers.size() << ", Earliest fit layers: " << earilest_fit_layers.size() << std::endl;
-
-            // exit(0);
-
-            // std::cout << "Total M-Pauli gates: " << m_pauli_rows.size() << std::endl;
 
             HTab m_tab(num_qubits_);
             for (const auto &row : m_pauli_rows)
@@ -102,10 +68,6 @@ namespace NWQEC
             std::vector<PauliOp> m_tab_rows = m_tab.get_rows();
 
             update_circuit(circuit, final_t_rows, m_tab_rows);
-
-            // Write optimized circuit after optimization
-            std::vector<Operation> optimized_operations = circuit.get_operations();
-            write_operations_to_file(optimized_operations, num_qubits_, "optimized_circuit.qasm", final_s_rows);
 
             return true;
         }
@@ -213,42 +175,6 @@ namespace NWQEC
             return layers;
         }
 
-        std::vector<HTab> create_layers_greedy(const std::vector<PauliOp> &t_pauli_rows)
-        {
-            if (t_pauli_rows.empty())
-                return {};
-
-            std::vector<HTab> layers;
-
-            // Add first T_PAULI operation to create the first layer
-            HTab first_tableau(t_pauli_rows[0].get_num_qubits());
-            first_tableau.add_stab(t_pauli_rows[0]);
-            layers.push_back(first_tableau);
-
-            // Process remaining T_PAULI operations
-            for (size_t i = 1; i < t_pauli_rows.size(); i++)
-            {
-                const PauliOp &pauli_row = t_pauli_rows[i];
-
-                bool commutes_with_layer = layers[layers.size() - 1].commutes_with_all(pauli_row); // Check only the most recent layer
-
-                if (!commutes_with_layer)
-                {
-                    // Already at the newest layer, create a new one
-                    HTab new_tableau(num_qubits_);
-                    new_tableau.add_stab(pauli_row);
-                    layers.push_back(new_tableau);
-                }
-                else
-                {
-                    // Add to the most recent layer
-                    layers.back().add_stab(pauli_row);
-                }
-            }
-
-            return layers;
-        }
-
         std::pair<std::vector<PauliOp>, std::vector<PauliOp>> optimize(std::vector<PauliOp> &t_pauli_rows)
         {
             std::vector<HTab> layers = create_layers(t_pauli_rows);
@@ -328,43 +254,6 @@ namespace NWQEC
             circuit = std::move(new_circuit);
         }
 
-        void write_operations_to_file(const std::vector<Operation> &operations,
-                                      size_t num_qubits,
-                                      const std::string &filename,
-                                      const std::vector<PauliOp> &s_pauli_rows = {}) const
-        {
-            std::ofstream file(filename);
-            if (!file.is_open())
-                return;
-
-            file << "OPENQASM 2.0;\n";
-            file << "include \"qelib1.inc\";\n";
-            file << "\n";
-            file << "qreg q[" << num_qubits << "];\n";
-            file << "\n";
-
-            for (const auto &op : operations)
-            {
-                if (op.get_type() == Operation::Type::T_PAULI ||
-                    op.get_type() == Operation::Type::S_PAULI ||
-                    op.get_type() == Operation::Type::M_PAULI)
-                {
-                    op.print(file);
-                    file << "\n";
-                }
-            }
-
-            for (auto it = s_pauli_rows.rbegin(); it != s_pauli_rows.rend(); ++it)
-            {
-                const PauliOp &row = *it;
-                if (row.is_valid() && row.get_rowtype() == NWQEC::RowType::S)
-                {
-                    file << "s_pauli " << row.to_string() << ";\n";
-                }
-            }
-
-            file.close();
-        }
     };
 
 } // namespace NWQEC

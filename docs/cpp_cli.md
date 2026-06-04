@@ -117,17 +117,20 @@ Gridsynth Usage
 ---------------
 **Available on macOS/Linux only**
 
-Syntax: `./gridsynth <angle> <precision_bits>`
+Syntax: `./gridsynth <angle> [epsilon]`
+
+The optional `epsilon` argument is an absolute error tolerance. If omitted,
+the tool defaults to `|theta| * 1e-2`.
 
 ```bash
-# Synthesize π/8 rotation with 12 bits of precision
-./gridsynth pi/8 12
+# Synthesize π/8 rotation with ε=1e-12
+./gridsynth pi/8 1e-12
 
-# Synthesize π/4 rotation with 10 bits of precision  
-./gridsynth pi/4 10
+# Synthesize π/4 rotation with the default ε=|θ|*1e-2
+./gridsynth pi/4
 
-# Synthesize arbitrary angle
-./gridsynth 0.785398 15  # approximately π/4
+# Synthesize an arbitrary angle with ε=1e-10
+./gridsynth 0.785398 1e-10  # approximately π/4
 ```
 
 
