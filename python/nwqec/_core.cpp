@@ -15,6 +15,7 @@
 #include "nwqec/core/constants.hpp"
 
 #include "nwqec/core/transpiler.hpp"
+#include "nwqec/analysis/clifford_t_counts.hpp"
 
 namespace py = pybind11;
 
@@ -376,6 +377,26 @@ PYBIND11_MODULE(_core, m)
         "Optimize the number of T rotations within a Pauli-Based Circuit (PBC) and return a new Circuit.\n"
         "- rz_err: RZ synthesis error policy: 'per-gate', 'total', or 'relative'\n"
         "- epsilon: optional value for any RZ synthesis still required");
+
+    m.def(
+        "get_clifford_t_counts",
+        [](const NWQEC::Circuit &circuit, bool keep_ccx, const std::string &rz_err, py::object epsilon)
+        {
+            NWQEC::RzErrorPolicy policy = parse_rz_err_policy(rz_err);
+            double resolved_epsilon = epsilon.is_none()
+                                          ? NWQEC::default_rz_error_epsilon(policy)
+                                          : epsilon.cast<double>();
+
+            return NWQEC::get_clifford_t_counts(circuit, policy, resolved_epsilon, keep_ccx);
+        },
+        py::arg("circuit"),
+        py::arg("keep_ccx") = false,
+        py::arg("rz_err") = "per-gate",
+        py::arg("epsilon") = py::none(),
+        "Return exact Clifford+T gate counts without generating the final circuit.\n"
+        "- keep_ccx: preserve CCX gates during decomposition\n"
+        "- rz_err: RZ synthesis error policy: 'per-gate', 'total', or 'relative'\n"
+        "- epsilon: optional value for the selected RZ error policy");
 
     m.def("load_qasm", [](const std::string &filename)
           {

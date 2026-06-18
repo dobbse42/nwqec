@@ -1,5 +1,6 @@
 #include "nwqec/parser/qasm_parser.hpp"
 #include "nwqec/core/transpiler.hpp"
+#include "nwqec/analysis/clifford_t_counts.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -8,6 +9,7 @@
 #include <filesystem>
 #include <cmath>
 #include <fstream>
+#include <map>
 #include <stdexcept>
 
 // PROJECT_ROOT_DIR is defined by CMake during compilation
@@ -65,6 +67,7 @@ int main(int argc, char *argv[])
     bool remove_pauli = false;
     bool keep_ccx = false;
     bool keep_cx = false;
+    bool clifford_t_counts = false;
     std::string rz_err_arg = "per-gate";
     bool epsilon_specified = false;
     double epsilon_value = NWQEC::DEFAULT_RZ_PER_GATE_EPSILON;
@@ -102,6 +105,7 @@ int main(int argc, char *argv[])
         std::cout << "" << std::endl;
 
         std::cout << "ANALYSIS OPTIONS:" << std::endl;
+        std::cout << "  --ct-counts, -C      Count Clifford+T gates without generating the final circuit" << std::endl;
         std::cout << "  --remove-pauli        Remove all Pauli gates (X, Y, Z) from final circuit" << std::endl;
         std::cout << "" << std::endl;
 
@@ -141,13 +145,16 @@ int main(int argc, char *argv[])
             std::cout << "  " << argv[0] << " circuit.qasm --rz-err total --epsilon 1e-2" << std::endl;
             std::cout << "    Use a total RZ synthesis error budget split over all RZ gates" << std::endl;
             std::cout << "" << std::endl;
+            std::cout << "  " << argv[0] << " circuit.qasm --ct-counts" << std::endl;
+            std::cout << "    Count Clifford+T gates without generating the final circuit" << std::endl;
+            std::cout << "" << std::endl;
             std::cout << "  " << argv[0] << " circuit.qasm -o my_output.qasm" << std::endl;
             std::cout << "    Transpile and save to custom filename" << std::endl;
             std::cout << "" << std::endl;
             std::cout << "WORKFLOW:" << std::endl;
             std::cout << "  1. Basic processing: decompose → remove trivial RZ → synthesize RZ" << std::endl;
             std::cout << "  2. Choose format: Clifford+T (default), PBC, or Clifford Reduction" << std::endl;
-            std::cout << "  3. Optional: T-optimization (for PBC), cleanup passes" << std::endl;
+            std::cout << "  3. Optional: T-optimization (for PBC), Clifford+T counts, cleanup passes" << std::endl;
             std::cout << "" << std::endl;
             std::cout << "NOTES:" << std::endl;
             std::cout << "  - Format options (--pbc, --cr) are mutually exclusive" << std::endl;
@@ -289,6 +296,12 @@ int main(int argc, char *argv[])
             t_pauli_opt = true;
             std::cout << "T Pauli optimizer enabled" << std::endl;
         }
+        else if (arg == "--ct-counts" || arg == "-C")
+        {
+            clifford_t_counts = true;
+            save_to_file = false;
+            std::cout << "Clifford+T gate counting enabled" << std::endl;
+        }
         else if (arg == "--rz-err")
         {
             if (arg_index + 1 >= argc)
@@ -402,6 +415,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    if (clifford_t_counts && (to_pbc || to_clifford_reduction || t_pauli_opt || remove_pauli || keep_cx))
+    {
+        std::cout << "Error: --ct-counts returns Clifford+T counts and cannot be combined with --pbc, --cr, --t-opt, --remove-pauli, or --keep-cx" << std::endl;
+        return 1;
+    }
+
     NWQEC::RzErrorPolicy rz_error_policy;
     try
     {
@@ -455,6 +474,8 @@ int main(int argc, char *argv[])
         std::vector<std::string> options;
         if (remove_pauli)
             options.push_back("Remove Pauli gates from final circuit");
+        if (clifford_t_counts)
+            options.push_back("Clifford+T gate counting only");
         if (keep_ccx)
             options.push_back("CCX gate preservation enabled");
         if (keep_cx)
@@ -530,6 +551,28 @@ int main(int argc, char *argv[])
 
     {
         circuit->print_stats(std::cout);
+    }
+
+    if (clifford_t_counts)
+    {
+        try
+        {
+            auto counts = NWQEC::get_clifford_t_counts(*circuit, rz_error_policy, epsilon_value, keep_ccx);
+            std::map<std::string, size_t> sorted_counts(counts.begin(), counts.end());
+
+            std::cout << "\n=== Clifford+T Gate Counts ===" << std::endl;
+            for (const auto &[gate_name, count] : sorted_counts)
+            {
+                if (count > 0)
+                    std::cout << "  " << gate_name << ": " << count << std::endl;
+            }
+            return 0;
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Error during Clifford+T gate counting: " << e.what() << std::endl;
+            return 1;
+        }
     }
 
     // Apply transpilation passes

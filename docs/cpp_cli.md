@@ -4,7 +4,7 @@ C++ CLI Guide
 Overview
 --------
 The repository provides two C++ command-line tools:
-- `./nwqec-cli`: parse OpenQASM, transpile to Clifford+T or PBC, optionally optimize T rotations, and export QASM/statistics.
+- `./nwqec-cli`: parse OpenQASM, transpile to Clifford+T or PBC, optionally optimize T rotations, count Clifford+T gates without generating the final circuit, and export QASM/statistics.
 - `./gridsynth`: synthesize a single RZ angle into a Clifford+T sequence.
 
 **Platform Support:**
@@ -48,7 +48,7 @@ The transpilation follows a clear three-step process:
 
 1. **Basic Processing**: `DECOMPOSE` → `REMOVE_TRIVIAL_RZ` → `SYNTHESIZE_RZ`
 2. **Choose Format**: Clifford+T (default), PBC, or Clifford Reduction  
-3. **Optional Optimization**: T-count optimization (for PBC only)
+3. **Optional Optimization or Analysis**: T-count optimization for PBC, or Clifford+T gate counts without final-circuit generation
 
 ```bash
 # Default: Clifford+T conversion
@@ -66,12 +66,23 @@ The transpilation follows a clear three-step process:
 # PBC with T-count optimization
 ./nwqec-cli circuit.qasm --pbc --t-opt
 
+# T-count optimization on an existing PBC circuit
+./nwqec-cli pbc_circuit.qasm --t-opt
+
+# Count Clifford+T gates without generating the final circuit
+./nwqec-cli circuit.qasm --ct-counts
+
+# Short form
+./nwqec-cli circuit.qasm -C
+
 # Clifford Reduction optimization
 ./nwqec-cli circuit.qasm --cr
 ```
 
-**Important**: Format options (`--pbc`, `--cr`) are mutually exclusive.  
-T-optimization (`--t-opt`) and CX preservation (`--keep-cx`) can only be combined with `--pbc`.  
+**Important**: Format options (`--pbc`, `--cr`) are mutually exclusive.
+T-optimization (`--t-opt`) can be combined with `--pbc`, or used alone when the input is already a PBC circuit.
+CX preservation (`--keep-cx`) can only be combined with `--pbc`.
+Clifford+T counting (`--ct-counts` or `-C`) cannot be combined with `--pbc`, `--cr`, `--t-opt`, `--remove-pauli`, or `--keep-cx`. It may be combined with `--keep-ccx`, though preserved CCX gates will appear as `ccx` counts rather than decomposed Clifford+T gates.
 Clifford Reduction (`--cr`) is based on techniques from Wang et al. "Optimizing FTQC Programs through QEC Transpiler and Architecture Codesign" (2024).
 
 ### Output Options
@@ -118,12 +129,20 @@ For `total`, the budget is split evenly over all RZ occurrences after trivial-RZ
 
 ### Analysis Options
 ```bash
+# Count the Clifford+T output without generating the final circuit
+./nwqec-cli circuit.qasm --ct-counts
+
+# Equivalent short option
+./nwqec-cli circuit.qasm -C
+
 # Remove Pauli gates from output
 ./nwqec-cli circuit.qasm --remove-pauli
 
 # Preserve CCX gates during decomposition
 ./nwqec-cli circuit.qasm --keep-ccx
 ```
+
+`--ct-counts` runs the normal Clifford+T workflow but returns gate counts before generating the final circuit. The output contains only gate names and counts that would appear in the resulting circuit.
 
 ### Complete Examples
 ```bash
@@ -135,6 +154,9 @@ For `total`, the budget is split evenly over all RZ occurrences after trivial-RZ
 
 # Generate QFT, apply Clifford reduction, don't save
 ./nwqec-cli --qft 8 --cr --no-save
+
+# Exact Clifford+T counts for a large circuit without generating the final circuit
+./nwqec-cli large_circuit.qasm --ct-counts --rz-err total --epsilon 1e-2
 
 # Shor circuit with PBC and CX preservation
 ./nwqec-cli --shor 4 --pbc --keep-cx

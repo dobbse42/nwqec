@@ -5,6 +5,7 @@ NWQEC
 NWQEC is a C++/Python toolkit for fault-tolerant quantum circuit transpilation. Key capabilities include:
 - Parsing OpenQASM 2.0 circuits into an internal circuit representation.
 - Converting arbitrary circuits to Clifford+T using the gridsynth algorithm [1].
+- Counting Clifford+T gates without generating the final circuit.
 - Producing Pauli-Based Circuits (PBC) with Tfuse optimisation for T-count reduction [2,3].
 - Applying Clifford reduction optimization [4], which preserves circuit parallelism while reducing non-T overhead.
 - Leveraging a tableau-based IR for high-performance PBC passes [2].
@@ -64,6 +65,10 @@ clifford_t = nwqec.to_clifford_t(circuit, keep_ccx=False)
 print("WITH_GRIDSYNTH_CPP:", nwqec.WITH_GRIDSYNTH_CPP)
 print("Clifford+T gate counts:", clifford_t.count_ops())
 
+# Exact Clifford+T counts without generating the final circuit.
+ct_counts = nwqec.get_clifford_t_counts(circuit, rz_err="total", epsilon=1e-2)
+print("Clifford+T counts without final circuit generation:", ct_counts)
+
 # Optional RZ synthesis error policies:
 #   per-gate: fixed epsilon per RZ (default 1e-10)
 #   total:    total budget split over all RZ gates (default 1e-2)
@@ -87,7 +92,7 @@ print(f"Depth reduction over PBC: {pbc.depth() / clifford_reduced.depth():.2f}x"
 - C++ CLI guide: [docs/cpp_cli.md](docs/cpp_cli.md)
 
 ## Repository Layout
-- `include/nwqec/` — public headers (core, parser, passes, gridsynth, tableau)
+- `include/nwqec/` — public headers (analysis, core, parser, passes, gridsynth, tableau)
 - `python/nwqec/` — Python package and pybind11 bindings
 - `tools/` — C++ command-line utilities (`nwqec-cli`, `gridsynth`)
 - `docs/` — additional documentation

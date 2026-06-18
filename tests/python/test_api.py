@@ -1,4 +1,5 @@
 import importlib.util
+import math
 from pathlib import Path
 import pytest
 
@@ -38,6 +39,19 @@ def test_load_and_stats(tmp_path):
 
     budgeted = nwqec.to_clifford_t(circuit, rz_err="total", epsilon=1e-2)
     assert budgeted.is_clifford_t()
+
+    ct_counts = nwqec.get_clifford_t_counts(circuit, rz_err="per-gate", epsilon=1e-6)
+    assert ct_counts.get("t", 0) > 0
+
+    simple_rz = nwqec.Circuit(1)
+    simple_rz.rz(0, math.pi / 8)
+    simple_counts = nwqec.get_clifford_t_counts(simple_rz, rz_err="per-gate", epsilon=1e-6)
+    assert simple_counts.get("t", 0) > 0
+
+    no_rz = nwqec.Circuit(2)
+    no_rz.h(0).t(0).cx(0, 1)
+    no_rz_counts = nwqec.get_clifford_t_counts(no_rz)
+    assert no_rz_counts == no_rz.count_ops()
 
     with pytest.raises(Exception, match="rz_err"):
         nwqec.to_clifford_t(circuit, rz_err="absolute")

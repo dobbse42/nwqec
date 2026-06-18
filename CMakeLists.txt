@@ -374,6 +374,8 @@ if(BUILD_TESTING)
              COMMAND $<TARGET_FILE:nwqec-cli> --qft 4 --no-save --rz-err relative --epsilon 1e-2)
     add_test(NAME nwqec_rz_error_total
              COMMAND $<TARGET_FILE:nwqec-cli> --qft 2 --no-save --rz-err total --epsilon 1e-2)
+    add_test(NAME nwqec_clifford_t_counts
+             COMMAND $<TARGET_FILE:nwqec-cli> --qft 2 --ct-counts --rz-err total --epsilon 1e-2)
     add_test(NAME gridsynth_basic
              COMMAND $<TARGET_FILE:gridsynth> pi/4 10)
     add_test(NAME qasm_parser_regression

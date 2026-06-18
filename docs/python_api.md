@@ -13,7 +13,7 @@ Module Constants
 
 Top-Level Functions
 -------------------
-Keyword-only options must be supplied by name (see bullet lists). Each function returns a new `Circuit` instance and raises `RuntimeError` on failure.
+Optional arguments may be supplied by name (see bullet lists). Transform functions return a new `Circuit` instance and raise `RuntimeError` on failure.
 
 - **`load_qasm(path: str) -> Circuit`**
   - `path`: filesystem path to an OpenQASM 2.0 file.
@@ -47,8 +47,16 @@ Keyword-only options must be supplied by name (see bullet lists). Each function 
   - `epsilon`: optional value for any remaining RZ synthesis.
   - Applies the Tfuse optimisation to reduce T rotations.
 
+- **`get_clifford_t_counts(circuit: Circuit, keep_ccx: bool = False, rz_err: str = "per-gate", epsilon: float | None = None) -> dict[str, int]`**
+  - `circuit`: source circuit.
+  - `keep_ccx`: preserve CCX gates when `True`; preserved CCX gates appear as `ccx` counts instead of decomposed Clifford+T gates.
+  - `rz_err`: RZ synthesis error policy.
+  - `epsilon`: optional value for the selected policy.
+  - Returns exact Clifford+T gate counts without generating the final circuit.
+  - The returned dictionary contains only gate names and counts that would appear in the resulting circuit, such as `"h"`, `"s"`, `"t"`, `"x"`, `"cx"`, or preserved gates such as `"ccx"`.
+
 ### RZ Synthesis Error
-All transforms that synthesize RZ gates accept `rz_err` and `epsilon`.
+All transforms that synthesize RZ gates, and `get_clifford_t_counts`, accept `rz_err` and `epsilon`.
 
 | `rz_err` | `epsilon` | Effective behavior |
 |---|---:|---|
@@ -129,6 +137,10 @@ print(c.stats())
 # Clifford+T conversion (default)
 ct = nwqec.to_clifford_t(c, keep_ccx=False)
 print("Clifford+T gate counts:", ct.count_ops())
+
+# Exact Clifford+T counts without generating the final circuit
+ct_counts = nwqec.get_clifford_t_counts(c, rz_err="total", epsilon=1e-2)
+print("Clifford+T counts without final circuit generation:", ct_counts)
 
 # Use a total RZ synthesis error budget
 ct_budgeted = nwqec.to_clifford_t(c, rz_err="total", epsilon=1e-2)
